@@ -4,7 +4,7 @@ const metaRegExp = new RegExp(metaRegExpStr, 'i');
 const ignoreKeys = /^(cover|video|encoding|background|start)$/i;
 const numberKeys = /^(bpm|gap|year|end|videogap|previewstart)$/i;
 
-const songRegExpStr = '(?<type>[:*F-])\\s(?<bpm_start>[0-9]+)(\\s(?<bpm_length>[0-9]+)\\s(?<pitch>[0-9-]+)\\s(?<text>.+))?';
+const songRegExpStr = '(?<type>[:*F-])\\s(?<bpm_start>[0-9-]+)(\\s(?<bpm_length>[0-9]+)\\s(?<pitch>[0-9-]+)\\s(?<text>.+))?';
 const songRowRegExp = new RegExp(songRegExpStr, 'g');
 const songRegExp = new RegExp(songRegExpStr);
 
@@ -55,6 +55,7 @@ const languageMap = {
   Englisch: 'en',
   Nederlands: 'nl',
   Dutch: 'nl',
+  Spanish: 'es',
 };
 
 export const getMetaData = content => content.match(metaRowRegExp).reduce(metaDataReducer, {});
@@ -73,7 +74,7 @@ export function getSongData(meta, content)
   content.match(songRowRegExp).forEach((row) =>
   {
     const { type, bpm_start, bpm_length, pitch, text } = row.match(songRegExp).groups;
-    const start = ((meta.videogap || 0) * 1000) + meta.gap + bpmToMs(bpm_start);
+    const start = ((meta.videogap || 0) * 1000) + (meta.gap || 0) + bpmToMs(bpm_start);
     const newLine = type === '-';
 
     if (!lastLine || newLine)
