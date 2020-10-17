@@ -8,6 +8,22 @@ const songRegExpStr = '(?<type>[:*F-])\\s(?<bpm_start>[0-9-]+)(\\s(?<bpm_length>
 const songRowRegExp = new RegExp(songRegExpStr, 'g');
 const songRegExp = new RegExp(songRegExpStr);
 
+const languageMap = {
+  German: 'de',
+  Deutsch: 'de',
+  English: 'en',
+  Englisch: 'en',
+  Nederlands: 'nl',
+  Dutch: 'nl',
+  Spanish: 'es',
+};
+
+const typeMapping = {
+  ':': 1, // 'REGULAR',
+  '*': 2, // 'GOLDEN',
+  'F': 0, // 'FREESTYLE',
+};
+
 const metaDataReducer = (result, row) =>
 {
   let { key, value } = row.match(metaRegExp).groups;
@@ -16,12 +32,7 @@ const metaDataReducer = (result, row) =>
 
   if (numberKeys.test(key))
   {
-    value = parseFloat(value);
-
-    if (value === 0)
-    {
-      return result;
-    }
+    value = parseFloat(value.replace(',', '.'));
   }
 
   if (/language/i.test(key))
@@ -42,22 +53,6 @@ const metaDataReducer = (result, row) =>
   };
 };
 
-const typeMapping = {
-  ':': 1, // 'REGULAR',
-  '*': 2, // 'GOLDEN',
-  'F': 0, // 'FREESTYLE',
-};
-
-const languageMap = {
-  German: 'de',
-  Deutsch: 'de',
-  English: 'en',
-  Englisch: 'en',
-  Nederlands: 'nl',
-  Dutch: 'nl',
-  Spanish: 'es',
-};
-
 export const getMetaData = content => content.match(metaRowRegExp).reduce(metaDataReducer, {});
 
 export function getSongData(meta, content)
@@ -67,52 +62,47 @@ export function getSongData(meta, content)
     throw new Error('Parsing relative song files is not yet implemented!');
   }
 
-  const bpmToMs = bpm => Math.round((250 / meta.bpm * 60) * parseInt(bpm, 10) * 100) / 100;
   const song = [];
-  let lastLine;
+  let currentLine;
 
   content.match(songRowRegExp).forEach((row) =>
   {
     const { type, bpm_start, bpm_length, pitch, text } = row.match(songRegExp).groups;
-    const start = ((meta.videogap || 0) * 1000) + (meta.gap || 0) + bpmToMs(bpm_start);
     const newLine = type === '-';
 
-    if (!lastLine || newLine)
+    if (!currentLine || newLine)
     {
-      if (lastLine)
+      if (newLine)
       {
-        const linePitches = lastLine.syllables.map(syllable => syllable.pitch);
-        lastLine.minPitch = Math.min(...linePitches);
-        lastLine.maxPitch = Math.max(...linePitches);
-        lastLine.end = start;
+        currentLine.end = parseInt(bpm_start);
 
-        if (newLine && !lastLine.syllables.length) return;
+        if (!currentLine.start)
+        {
+          currentLine.start = currentLine.syllables[0].start;
+        }
       }
 
-      lastLine = { start, end: null, minPitch: null, maxPitch: null, syllables: [] };
-      song.push(lastLine);
+      currentLine = { syllables: [] };
+      song.push(currentLine);
 
-      if (newLine) return;
+      if (newLine)
+      {
+        currentLine.start = bpm_length;
+        return;
+      }
     }
 
-    if (!lastLine.syllables.length && start - lastLine.start > 1000) {
-      lastLine.start = start;
-    }
-
-    lastLine.syllables.push({
+    currentLine.syllables.push({
       type: typeMapping[type],
-      start,
-      length: bpm_length && bpmToMs(bpm_length),
+      start: parseInt(bpm_start),
+      length: bpm_length && parseInt(bpm_length, 10),
       pitch: pitch && parseInt(pitch, 10),
       text,
     });
   });
 
-  const lastSyllable = lastLine.syllables[lastLine.syllables.length - 1];
-  const lastPitches = lastLine.syllables.map(syllable => syllable.pitch);
-  lastLine.minPitch = Math.min(...lastPitches);
-  lastLine.maxPitch = Math.max(...lastPitches);
-  lastLine.end = lastSyllable.start + lastSyllable.length;
+  currentLine.start = currentLine.syllables[0].start;
+  currentLine.end = currentLine.syllables[currentLine.syllables.length - 1].start + currentLine.syllables[currentLine.syllables.length - 1].length;
 
   return song;
 }
