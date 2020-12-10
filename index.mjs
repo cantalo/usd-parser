@@ -101,8 +101,15 @@ export function getSongData(meta, content)
     });
   });
 
-  currentLine.start = currentLine.syllables[0].start;
-  currentLine.end = currentLine.syllables[currentLine.syllables.length - 1].start + currentLine.syllables[currentLine.syllables.length - 1].length;
+  if (currentLine.syllables.length)
+  {
+    currentLine.start = currentLine.syllables[0].start;
+    currentLine.end = currentLine.syllables[currentLine.syllables.length - 1].start + currentLine.syllables[currentLine.syllables.length - 1].length;
+  }
+  else
+  {
+    song.pop();
+  }
 
   return song;
 }
