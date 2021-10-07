@@ -92,6 +92,11 @@ export function getSongData(meta, content)
       }
     }
 
+    if (!text)
+    {
+      currentLine.comment = 'Empty syllable !';
+    }
+
     currentLine.syllables.push({
       type: typeMapping[type],
       start: parseInt(bpm_start),
